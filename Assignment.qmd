@@ -1,0 +1,107 @@
+---
+title: "United Nations Speeches keyword analysis"
+author: "Zoi Karampatzaki r0779205"
+format:
+  html:
+    theme: journal
+    toc: true
+    code-link: true
+    abstract-title: "Abstract"
+  pdf:
+    lof: true
+    lot: true
+    toc: true
+  docx:
+    reference-doc: template.docx
+number-sections: true
+echo: false
+abstract: "This is a sample abstract for the sample paper just to show how you can add an abstract. It's not necessary, but you could if you wanted."
+#bibliography:
+#  - bibliography.bib
+#  - packages.bib
+#csl: unified-style-sheet-for-linguistics.csl
+prefer-html: true
+---
+
+## Introduction
+
+Every year United Nations organize an assembly where all the members are participating and discuss current affairs. In each of these assemblies, also known as General Debates (GD), representatives from all the countries-participants make a speech related to the main topics and issues they are currently deal with. The information one can derive from these speeches is related to a wide range of global politics topics, international development and relationships. However, the vast amount of corpora makes the analysis more complicated since it consists of more than 8 thousands speeches.
+
+A corpus of all the speeches that took place in UN assemblies from 1970 to 2020 is provided by Harvard University in the website [dataverse.harvard.edu](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/0TJX8Y).
+
+Several methods have been applied to analyze the dataset mentioned above, with more focus on Natural Language Processing, more specifically, on topic modelling. Baturo and Dasandi \cite{} detected the main topics of all the speeches from 1970 to 2016 and provide the most used words for each of them. In \cite{}, the same corpus was utilized to illustrate countries' preferences about specific topics.
+
+In this study, it is of interest to... (give the research questions)
+
+## Collect the corpora
+
+As mentioned above, the speeches are provided online in format of .txt files and the file name gives the 3-letter code of the respective country and the year that the speech takes place.
+
+```{r}
+#| label: setup
+#| include: false
+library(tidyverse)
+library(mclm)
+library(here)
+library(ggrepel)
+library(kableExtra)
+options(digits=3)
+
+corpus_folder <- here("Politics project", "Converted sessions")
+
+fnames_BASE <- get_fnames(corpus_folder) %>% 
+  keep_re("[.]txt")
+short_fnames <- short_names(fnames_BASE)
+Country <- short_fnames %>%
+  re_retrieve_first("([^_]+)", requested_group = 1)
+Year <- short_fnames %>%
+  re_retrieve_last("([^_]+)", requested_group = 1)
+Decade <- substr(Year, 1, 3) %>% paste("0", sep = "") 
+code <- read.csv("C:\\Users\\karamzo\\Documents\\corpus_class\\Politics project\\countries_codes.csv", header=TRUE, stringsAsFactors=FALSE)
+country = as.data.frame(Country)
+names(country)="Code"
+Continent = left_join(x = country, y = code, by = "Code")
+
+# store names of target corpus files in fnames_target
+fnames_target <- fnames_BASE %>%
+  keep_re("Sessions of 70s") %>%
+  print(hide_path = corpus_folder)
+# store names of reference corpus files in fnames_ref
+fnames_ref <- fnames_BASE %>%
+  drop_re("Sessions of 70s") %>%
+  print(n = 10, hide_path = corpus_folder)
+
+## Frequency Lists
+# build frequency list for target corpus
+flist_target <- fnames_target %>%
+  freqlist(re_token_splitter = r"--[(?xi)    \s+   ]--", 
+           re_drop_token     = r"--[(?xi)  [:\[\]] ]--", 
+           file_encoding     = "windows-1252") %>%
+  print(n=100)
+
+```
+
+```{r}
+flist_target %>% 
+  as_tibble() %>% 
+  kbl(col.names = c("Rank", "Type", "Absolute", "Relative")) %>% 
+  kable_minimal(full_width = FALSE) %>% 
+  add_header_above(c(" " = 2, "Frequency" = 2)) %>% 
+  scroll_box(height = "400px")
+```
+
+```{r}
+#| label: setup
+#| include: false
+
+## Association scores ##
+# calculate scores
+scores_kw <- assoc_scores(flist_target, flist_ref)
+
+# print scores, sorted by PMI
+print(scores_kw, sort_order = "PMI")
+
+# print scores, sorted by G_signed
+print(scores_kw, sort_order = "G_signed", n=30)
+
+```
